@@ -75,6 +75,15 @@ type Shared_Auxiliary_588 =
         | {
             none: Shared_Auxiliary_606;
           };
+    }
+  | {
+      feedback:
+        | {
+            some: Shared_Auxiliary_606;
+          }
+        | {
+            none: Shared_Auxiliary_606;
+          };
     };
 
 type Shared_Auxiliary_606 =
@@ -119,7 +128,7 @@ type Shared_Auxiliary_606 =
       arg: Shared_Auxiliary_606;
     };
 
-type Shared_Auxiliary_1139 =
+type Shared_Auxiliary_1142 =
   | {
       op: 'eq' | 'ne' | 'lt' | 'lte' | 'gt' | 'gte';
       left:
@@ -164,19 +173,19 @@ type Shared_Auxiliary_1139 =
     }
   | {
       op: 'and' | 'or';
-      args: Shared_Auxiliary_1139[];
+      args: Shared_Auxiliary_1142[];
     }
   | {
       op: 'not';
-      arg: Shared_Auxiliary_1139;
+      arg: Shared_Auxiliary_1142;
     };
 
-type Shared_Auxiliary_1279 = {
+type Shared_Auxiliary_1282 = {
   id?: string | undefined;
   name: string;
   type: 'file' | 'folder';
   content?: string | undefined;
-  children?: Shared_Auxiliary_1279[] | undefined;
+  children?: Shared_Auxiliary_1282[] | undefined;
 };
 
 type Shared_Type_0 = {
@@ -2609,7 +2618,7 @@ type Shared_Type_111 = {
       }
     | undefined;
   steps: Shared_Type_106;
-  predicates: Shared_Auxiliary_1139[];
+  predicates: Shared_Auxiliary_1142[];
 };
 
 type Shared_Type_112 = {
@@ -2632,7 +2641,7 @@ type Shared_Type_112 = {
         description?: string | undefined;
       };
   loopType: 'dowhile' | 'dountil';
-  predicate: Shared_Auxiliary_1139;
+  predicate: Shared_Auxiliary_1142;
 };
 
 type Shared_Type_113 =
@@ -2986,7 +2995,7 @@ type Shared_Type_126 = {
   /** List of asset file paths */
   assets?: string[] | undefined;
   /** Full file tree structure for the skill */
-  files?: Shared_Auxiliary_1279[] | undefined;
+  files?: Shared_Auxiliary_1282[] | undefined;
   /** Additional metadata for the skill */
   metadata?:
     | {
@@ -16812,7 +16821,7 @@ export type PostStoredSkills_Body = {
   /** List of asset file paths */
   assets?: string[] | undefined;
   /** Full file tree structure for the skill */
-  files?: Shared_Auxiliary_1279[] | undefined;
+  files?: Shared_Auxiliary_1282[] | undefined;
   /** Additional metadata for the skill */
   metadata?:
     | {
@@ -16870,7 +16879,7 @@ export type PatchStoredSkillsStoredSkillId_Body = {
   /** List of asset file paths */
   assets?: (string[] | undefined) | undefined;
   /** Full file tree structure for the skill */
-  files?: (Shared_Auxiliary_1279[] | undefined) | undefined;
+  files?: (Shared_Auxiliary_1282[] | undefined) | undefined;
   /** Additional metadata for the skill */
   metadata?:
     | (
