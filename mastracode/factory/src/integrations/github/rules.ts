@@ -24,6 +24,7 @@ import {
   WorkItemUpdateConflictError,
 } from '../../storage/domains/work-items/base.js';
 import type { IntegrationContext } from '../base.js';
+import { recordPullRequestHead } from '../pull-request-head.js';
 import type { GithubAppIdentity } from './app-identity.js';
 import type { GithubEventRules } from './default-rules.js';
 import type { GithubRepositoryPermission } from './integration.js';
@@ -50,6 +51,11 @@ async function withRuleTimeout<T>(promise: Promise<T>): Promise<T> {
 
 function object(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+}
+
+function timestamp(value: unknown): number | undefined {
+  const parsed = typeof value === 'string' ? Date.parse(value) : NaN;
+  return Number.isNaN(parsed) ? undefined : parsed;
 }
 
 function string(value: unknown): string | undefined {
@@ -775,11 +781,21 @@ export class GithubRules {
             ? reviewCard !== undefined && reviewCard.metadata?.state !== 'closed'
             : reviewCard?.metadata?.state !== 'closed';
         if (authoringItem && trusted && stillOpen) {
+          // The head comes along so a head recorded for an earlier pull
+          // request cannot mark this one's verdict outdated. A replayed opening
+          // of the pull request already recorded keeps the head its pushes left.
+          const rebinding = authoringItem.metadata?.openPullRequestNumber !== pullRequestNumber;
+          const head = rebinding
+            ? {
+                pullRequestHeadSha: string(object(pullRequest?.head)?.sha)?.toLowerCase() ?? null,
+                pullRequestHeadAt: timestamp(pullRequest?.updated_at) ?? null,
+              }
+            : {};
           await this.options.storage.update({
             orgId: authoringItem.orgId,
             id: authoringItem.id,
             userId: 'factory-rule-dispatcher',
-            patch: { metadata: { openPullRequestNumber: pullRequestNumber } },
+            patch: { metadata: { openPullRequestNumber: pullRequestNumber, ...head } },
           });
         }
         return;
@@ -825,8 +841,43 @@ export class GithubRules {
       relatedItem.externalSource?.type !== 'pull-request'
         ? relatedItem
         : undefined;
+    // A push moves the head a recorded review verdict was given on. Recording
+    // the new head lets the verdict badge show that it is outdated, while the
+    // verdict itself stays so the next pass still runs as a re-review.
+    const stampHead = async () => {
+      const headSha = string(object(pullRequest?.head)?.sha)?.toLowerCase();
+      if (event !== 'pullRequestUpdated' || !headSha || !pullRequestNumber) return;
+      const headAt = timestamp(pullRequest?.updated_at);
+      if (relatedItem?.externalSource?.type !== 'pull-request') return;
+      const parent = await this.#linkedClosureItem(
+        project.orgId,
+        project.factoryProjectId,
+        repositoryId,
+        repositoryName,
+        pullRequestNumber,
+        relatedItem,
+      );
+      // The authoring Work item mirrors the verdict of the pull request it has
+      // out; a push to an older one must not mark its successor's verdict.
+      await recordPullRequestHead(this.options.storage, {
+        orgId: relatedItem.orgId,
+        id: relatedItem.id,
+        headSha,
+        headAt,
+      });
+      if (parent) {
+        await recordPullRequestHead(this.options.storage, {
+          orgId: parent.orgId,
+          id: parent.id,
+          headSha,
+          headAt,
+          ownedPullRequestNumber: pullRequestNumber,
+        });
+      }
+    };
     if (linked === undefined && authoringItem === undefined) {
       await stampClosed();
+      await stampHead();
       return primary;
     }
     const companion = linked ?? authoringItem;
